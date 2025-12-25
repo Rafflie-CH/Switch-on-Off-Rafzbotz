@@ -147,22 +147,42 @@ const btnStart = document.getElementById("start")
 const btnStop = document.getElementById("stop")
 const btnRestart = document.getElementById("restart")
 
+let busy = false
+
 async function refresh() {
-  const r = await fetch("/api/status")
-  const d = await r.json()
-  const s = d.status || "OFF"
+  try {
+    const r = await fetch("/api/status")
+    const d = await r.json()
+    const s = d.status || "OFF"
 
-  st.textContent = s
-  st.className = s
+    st.textContent = s
+    st.className = s
 
-  btnStart.disabled   = s !== "OFF"
-  btnStop.disabled    = s !== "ON"
-  btnRestart.disabled = s === "OFF"
+    btnStart.disabled = s !== "OFF" || busy
+    btnStop.disabled = s !== "ON" || busy
+    btnRestart.disabled = s === "OFF" || busy
+  } catch {
+    st.textContent = "OFFLINE"
+    st.className = "OFF"
+  }
 }
 
-btnStart.onclick = () => fetch("/api/start").then(refresh)
-btnStop.onclick = () => fetch("/api/stop").then(refresh)
-btnRestart.onclick = () => fetch("/api/restart").then(refresh)
+async function send(cmd) {
+  if (busy) return
+  busy = true
+  refresh()
+
+  await fetch("/api/" + cmd)
+
+  setTimeout(() => {
+    busy = false
+    refresh()
+  }, 4000)
+}
+
+btnStart.onclick = () => send("start")
+btnStop.onclick = () => send("stop")
+btnRestart.onclick = () => send("restart")
 
 refresh()
 setInterval(refresh, 5000)
