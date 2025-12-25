@@ -151,19 +151,23 @@ let busy = false
 
 async function refresh() {
   try {
-    const r = await fetch("/api/status")
+    const r = await fetch("/api/status", { cache: "no-store" })
     const d = await r.json()
     const s = d.status || "OFF"
 
     st.textContent = s
     st.className = s
 
+    // aturan tombol (HARUS KETAT)
     btnStart.disabled = s !== "OFF" || busy
     btnStop.disabled = s !== "ON" || busy
-    btnRestart.disabled = s === "OFF" || busy
+    btnRestart.disabled = s !== "ON" || busy
   } catch {
     st.textContent = "OFFLINE"
     st.className = "OFF"
+    btnStart.disabled = true
+    btnStop.disabled = true
+    btnRestart.disabled = true
   }
 }
 
@@ -172,12 +176,15 @@ async function send(cmd) {
   busy = true
   refresh()
 
-  await fetch("/api/" + cmd)
+  try {
+    await fetch("/api/" + cmd, { method: "GET" })
+  } catch {}
 
-  setTimeout(() => {
+  // kasih waktu backend beres (penting buat Replit)
+  setTimeout(async () => {
     busy = false
-    refresh()
-  }, 4000)
+    await refresh()
+  }, cmd === "restart" ? 3000 : 2000)
 }
 
 btnStart.onclick = () => send("start")
@@ -185,7 +192,7 @@ btnStop.onclick = () => send("stop")
 btnRestart.onclick = () => send("restart")
 
 refresh()
-setInterval(refresh, 5000)
+setInterval(refresh, 3000) // lebih responsif
 </script>
 </body>
 </html>
